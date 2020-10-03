@@ -30,15 +30,22 @@ public class PlayerEvents {
             return;
         }
 
-        Optional<PersistentPlayerEntity> persistentPlayer = findPersistentPlayer(player.getServerWorld(), player.getUniqueID());
+        boolean foundPlayer = false;
+        for (ServerWorld world : player.getServerWorld().getServer().getWorlds()) {
+            Optional<PersistentPlayerEntity> persistentPlayer = findPersistentPlayer(world, player.getUniqueID());
 
-        if (persistentPlayer.isPresent()) {
-            PersistentPlayerEntity p = persistentPlayer.get();
-            p.toPlayer(player);
-            p.remove();
-        } else {
+            if (persistentPlayer.isPresent()) {
+                PersistentPlayerEntity p = persistentPlayer.get();
+                p.toPlayer(player);
+                p.remove();
+                foundPlayer = true;
+                break;
+            }
+        }
+        if (!foundPlayer) {
             Main.LOGGER.error("Failed to find persisted player. Defaulting to vanilla spawning.");
         }
+
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
