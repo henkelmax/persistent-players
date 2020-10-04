@@ -1,5 +1,14 @@
 # Persistent Players ![](http://cf.way2muchnoise.eu/full_411072_downloads.svg) ![](http://cf.way2muchnoise.eu/versions/411072.svg)
 
+## Links
+- [CurseForge](https://www.curseforge.com/minecraft/mc-mods/persistent-players)
+- [ModRepo](https://modrepo.de/minecraft/persistent_players/overview)
+- [GitHub](https://github.com/henkelmax/persistent-players)
+- [FAQ](https://modrepo.de/minecraft/persistent_players/faq)
+- [Credits](https://modrepo.de/minecraft/persistent_players/credits)
+
+---
+
 Players stay in the world when they log out.
 
 ## Features
