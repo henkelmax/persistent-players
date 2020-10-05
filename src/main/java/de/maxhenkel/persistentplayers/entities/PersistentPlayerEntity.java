@@ -4,6 +4,7 @@ import com.mojang.authlib.GameProfile;
 import de.maxhenkel.persistentplayers.Main;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.MobEntity;
+import net.minecraft.entity.Pose;
 import net.minecraft.entity.ai.attributes.AttributeModifierMap;
 import net.minecraft.entity.ai.attributes.Attributes;
 import net.minecraft.entity.ai.goal.LookAtGoal;
@@ -39,6 +40,10 @@ public class PersistentPlayerEntity extends MobEntity {
         super(type, world);
         Arrays.fill(inventoryArmorDropChances, 0F);
         Arrays.fill(inventoryHandsDropChances, 0F);
+
+        if (Main.SERVER_CONFIG.offlinePlayersSleep.get()) {
+            setPose(Pose.SLEEPING);
+        }
     }
 
     public PersistentPlayerEntity(World world) {
@@ -107,8 +112,11 @@ public class PersistentPlayerEntity extends MobEntity {
     protected void registerGoals() {
         super.registerGoals();
         goalSelector.addGoal(0, new SwimGoal(this));
-        goalSelector.addGoal(1, new LookAtGoal(this, MobEntity.class, 8F));
-        goalSelector.addGoal(2, new LookRandomlyGoal(this));
+        if (!Main.SERVER_CONFIG.offlinePlayersSleep.get()) {
+            goalSelector.addGoal(1, new LookAtGoal(this, MobEntity.class, 8F));
+            goalSelector.addGoal(2, new LookRandomlyGoal(this));
+        }
+
     }
 
     public static AttributeModifierMap.MutableAttribute getAttributes() {

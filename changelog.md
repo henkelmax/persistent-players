@@ -1,1 +1,1 @@
-- Added german language
+- Add sleeping player config option
