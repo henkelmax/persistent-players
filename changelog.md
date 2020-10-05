@@ -1,1 +1,1 @@
-- Added HWYLA compatibility
+- Added german language
