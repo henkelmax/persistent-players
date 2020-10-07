@@ -1,1 +1,1 @@
-- Updated dependencies
+- Fixed model not applied to offline player
