@@ -1,6 +1,7 @@
 package de.maxhenkel.persistentplayers.entities;
 
 import com.mojang.authlib.GameProfile;
+import de.maxhenkel.corelib.player.PlayerUtils;
 import de.maxhenkel.persistentplayers.Main;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.MobEntity;
@@ -25,9 +26,7 @@ import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.world.World;
 import net.minecraft.world.server.ServerWorld;
-import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
 
-import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.UUID;
@@ -71,7 +70,7 @@ public class PersistentPlayerEntity extends MobEntity {
         persistentPlayer.func_241209_g_(player.getFireTimer());
         player.getActivePotionEffects().forEach(persistentPlayer::addPotionEffect);
         persistentPlayer.setInvulnerable(player.isCreative());
-        persistentPlayer.setPlayerModel(getModel(player));
+        persistentPlayer.setPlayerModel(PlayerUtils.getModel(player));
         return persistentPlayer;
     }
 
@@ -87,17 +86,6 @@ public class PersistentPlayerEntity extends MobEntity {
         player.prevRotationPitch = prevRotationPitch;
         player.rotationYawHead = rotationYawHead;
         player.prevRotationYawHead = prevRotationYawHead;
-    }
-
-    public static byte getModel(PlayerEntity player) {
-        try {
-            Field flag = ObfuscationReflectionHelper.findField(PlayerEntity.class, "field_184827_bp");
-            DataParameter<Byte> dataParameter = (DataParameter<Byte>) flag.get(null);
-            return player.getDataManager().get(dataParameter);
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-            return 0;
-        }
     }
 
     @Override
