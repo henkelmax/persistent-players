@@ -1,1 +1,1 @@
-- Add sleeping player config option
+- Updated dependencies
