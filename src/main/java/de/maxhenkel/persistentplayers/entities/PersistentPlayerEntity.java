@@ -75,6 +75,7 @@ public class PersistentPlayerEntity extends EntityMob {
         }
         player.getActivePotionEffects().forEach(persistentPlayer::addPotionEffect);
         persistentPlayer.setEntityInvulnerable(player.isCreative());
+        persistentPlayer.setPlayerModel(getModel(player));
         return persistentPlayer;
     }
 
@@ -97,6 +98,16 @@ public class PersistentPlayerEntity extends EntityMob {
         player.prevRotationYawHead = prevRotationYawHead;
     }
 
+    public static byte getModel(EntityPlayer player) {
+        try {
+            Field flag = ObfuscationReflectionHelper.findField(EntityPlayer.class, "field_184827_bp");
+            DataParameter<Byte> dataParameter = (DataParameter<Byte>) flag.get(null);
+            return player.getDataManager().get(dataParameter);
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+            return 0;
+        }
+    }
 
     @Override
     public void onDeath(DamageSource cause) {
