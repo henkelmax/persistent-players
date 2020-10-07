@@ -1,15 +1,23 @@
 package de.maxhenkel.persistentplayers;
 
-import de.maxhenkel.corelib.config.ConfigBase;
 import net.minecraftforge.common.ForgeConfigSpec;
+import org.apache.commons.lang3.tuple.Pair;
 
-public class ServerConfig extends ConfigBase {
+public class ServerConfig {
+
+    public static final ServerConfig SERVER;
+    public static final ForgeConfigSpec SERVER_SPEC;
+
+    static {
+        Pair<ServerConfig, ForgeConfigSpec> specPairServer = new ForgeConfigSpec.Builder().configure(ServerConfig::new);
+        SERVER_SPEC = specPairServer.getRight();
+        SERVER = specPairServer.getLeft();
+    }
 
     public final ForgeConfigSpec.BooleanValue persistCreativePlayers;
     public final ForgeConfigSpec.BooleanValue offlinePlayersSleep;
 
     public ServerConfig(ForgeConfigSpec.Builder builder) {
-        super(builder);
         persistCreativePlayers = builder
                 .comment("If players in creative mode should persist")
                 .define("persist_creative_players", true);

@@ -1,7 +1,10 @@
 package de.maxhenkel.persistentplayers.entities;
 
+import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.minecraft.MinecraftProfileTexture;
 import com.mojang.blaze3d.matrix.MatrixStack;
-import de.maxhenkel.corelib.client.PlayerSkins;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.network.play.NetworkPlayerInfo;
 import net.minecraft.client.renderer.IRenderTypeBuffer;
 import net.minecraft.client.renderer.entity.EntityRendererManager;
 import net.minecraft.client.renderer.entity.LivingRenderer;
@@ -11,9 +14,11 @@ import net.minecraft.client.renderer.entity.layers.HeadLayer;
 import net.minecraft.client.renderer.entity.layers.HeldItemLayer;
 import net.minecraft.client.renderer.entity.model.BipedModel;
 import net.minecraft.client.renderer.entity.model.PlayerModel;
+import net.minecraft.client.resources.DefaultPlayerSkin;
 import net.minecraft.entity.player.PlayerModelPart;
 import net.minecraft.util.ResourceLocation;
 
+import java.util.Map;
 import java.util.UUID;
 
 public class PlayerRenderer extends LivingRenderer<PersistentPlayerEntity, PlayerModel<PersistentPlayerEntity>> {
@@ -41,14 +46,14 @@ public class PlayerRenderer extends LivingRenderer<PersistentPlayerEntity, Playe
 
     @Override
     public ResourceLocation getEntityTexture(PersistentPlayerEntity entity) {
-        return PlayerSkins.getSkin(entity.getPlayerUUID().orElse(new UUID(0L, 0L)), entity.getPlayerName());
+        return getSkin(new GameProfile(entity.getPlayerUUID().orElse(new UUID(0L, 0L)), entity.getPlayerName()));
     }
 
     @Override
     public void render(PersistentPlayerEntity entity, float entityYaw, float partialTicks, MatrixStack matrixStack, IRenderTypeBuffer buffer, int packedLightIn) {
         matrixStack.push();
 
-        if (PlayerSkins.isSlim(entity.getPlayerUUID().orElse(new UUID(0L, 0L)))) {
+        if (isSlim(entity.getPlayerUUID().orElse(new UUID(0L, 0L)))) {
             entityModel = playerModelSmallArms;
         } else {
             entityModel = playerModel;
@@ -57,6 +62,22 @@ public class PlayerRenderer extends LivingRenderer<PersistentPlayerEntity, Playe
         super.render(entity, entityYaw, partialTicks, matrixStack, buffer, packedLightIn);
 
         matrixStack.pop();
+    }
+
+    public static ResourceLocation getSkin(GameProfile gameProfile) {
+        Minecraft minecraft = Minecraft.getInstance();
+        Map<MinecraftProfileTexture.Type, MinecraftProfileTexture> map = minecraft.getSkinManager().loadSkinFromCache(gameProfile);
+
+        if (map.containsKey(MinecraftProfileTexture.Type.SKIN)) {
+            return minecraft.getSkinManager().loadSkin(map.get(MinecraftProfileTexture.Type.SKIN), MinecraftProfileTexture.Type.SKIN);
+        } else {
+            return DefaultPlayerSkin.getDefaultSkin(gameProfile.getId());
+        }
+    }
+
+    public static boolean isSlim(UUID uuid) {
+        NetworkPlayerInfo networkplayerinfo = Minecraft.getInstance().getConnection().getPlayerInfo(uuid);
+        return networkplayerinfo == null ? (uuid.hashCode() & 1) == 1 : networkplayerinfo.getSkinType().equals("slim");
     }
 
     private void setModelVisibilities(PersistentPlayerEntity playerEntity) {

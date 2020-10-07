@@ -2,15 +2,14 @@ package de.maxhenkel.persistentplayers.entities;
 
 import com.mojang.authlib.GameProfile;
 import de.maxhenkel.persistentplayers.Main;
+import de.maxhenkel.persistentplayers.ServerConfig;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.MobEntity;
 import net.minecraft.entity.Pose;
-import net.minecraft.entity.ai.attributes.AttributeModifierMap;
-import net.minecraft.entity.ai.attributes.Attributes;
+import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.ai.goal.LookAtGoal;
 import net.minecraft.entity.ai.goal.LookRandomlyGoal;
 import net.minecraft.entity.ai.goal.SwimGoal;
-import net.minecraft.entity.monster.MonsterEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerModelPart;
 import net.minecraft.entity.player.ServerPlayerEntity;
@@ -41,7 +40,7 @@ public class PersistentPlayerEntity extends MobEntity {
         Arrays.fill(inventoryArmorDropChances, 0F);
         Arrays.fill(inventoryHandsDropChances, 0F);
 
-        if (Main.SERVER_CONFIG.offlinePlayersSleep.get()) {
+        if (ServerConfig.SERVER.offlinePlayersSleep.get()) {
             setPose(Pose.SLEEPING);
         }
     }
@@ -66,7 +65,7 @@ public class PersistentPlayerEntity extends MobEntity {
         persistentPlayer.prevRotationYawHead = player.prevRotationYawHead;
         persistentPlayer.setHealth(player.getHealth());
         persistentPlayer.setAir(player.getAir());
-        persistentPlayer.func_241209_g_(player.getFireTimer());
+        persistentPlayer.setFireTimer(player.getFireTimer());
         player.getActivePotionEffects().forEach(persistentPlayer::addPotionEffect);
         persistentPlayer.setInvulnerable(player.isCreative());
         return persistentPlayer;
@@ -75,7 +74,7 @@ public class PersistentPlayerEntity extends MobEntity {
     public void toPlayer(ServerPlayerEntity player) {
         player.setHealth(getHealth());
         player.setAir(getAir());
-        player.func_241209_g_(getFireTimer());
+        player.setFireTimer(getFireTimer());
         getActivePotionEffects().forEach(player::addPotionEffect);
         player.teleport((ServerWorld) world, getPosX(), getPosY(), getPosZ(), rotationYaw, rotationPitch);
         player.rotationYaw = rotationYaw;
@@ -112,16 +111,17 @@ public class PersistentPlayerEntity extends MobEntity {
     protected void registerGoals() {
         super.registerGoals();
         goalSelector.addGoal(0, new SwimGoal(this));
-        if (!Main.SERVER_CONFIG.offlinePlayersSleep.get()) {
+        if (!ServerConfig.SERVER.offlinePlayersSleep.get()) {
             goalSelector.addGoal(1, new LookAtGoal(this, MobEntity.class, 8F));
             goalSelector.addGoal(2, new LookRandomlyGoal(this));
         }
 
     }
 
-    public static AttributeModifierMap.MutableAttribute getAttributes() {
-        return MonsterEntity.func_234295_eP_()
-                .func_233815_a_(Attributes.field_233818_a_, 20D);
+    @Override
+    protected void registerAttributes() {
+        super.registerAttributes();
+        getAttribute(SharedMonsterAttributes.MAX_HEALTH).setBaseValue(20D);
     }
 
     @Override
@@ -195,7 +195,7 @@ public class PersistentPlayerEntity extends MobEntity {
     public void readAdditional(CompoundNBT compound) {
         super.readAdditional(compound);
 
-        if (compound.contains("playerUUID")) {
+        if (compound.contains("playerUUIDMost")) {
             setPlayerUUID(compound.getUniqueId("playerUUID"));
         }
 

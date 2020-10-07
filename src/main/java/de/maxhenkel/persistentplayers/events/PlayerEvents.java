@@ -2,18 +2,16 @@ package de.maxhenkel.persistentplayers.events;
 
 import com.mojang.authlib.GameProfile;
 import de.maxhenkel.persistentplayers.Main;
+import de.maxhenkel.persistentplayers.ServerConfig;
 import de.maxhenkel.persistentplayers.entities.PersistentPlayerEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.management.PlayerInteractionManager;
 import net.minecraft.world.server.ServerWorld;
-import net.minecraft.world.storage.PlayerData;
+import net.minecraft.world.storage.SaveHandler;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
 
-import java.lang.reflect.Field;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -68,7 +66,7 @@ public class PlayerEvents {
         if (player.isSpectator()) {
             return false;
         }
-        if (player.isCreative() && !Main.SERVER_CONFIG.persistCreativePlayers.get()) {
+        if (player.isCreative() && !ServerConfig.SERVER.persistCreativePlayers.get()) {
             return false;
         }
         return true;
@@ -107,20 +105,11 @@ public class PlayerEvents {
             return;
         }
 
-        PlayerData playerData = getPlayerData(world);
+        SaveHandler playerData = world.getSaveHandler();
         ServerPlayerEntity serverPlayerEntity = new ServerPlayerEntity(world.getServer(), world, new GameProfile(playerUUID, ""), new PlayerInteractionManager(world));
-        playerData.func_237336_b_(serverPlayerEntity);
+        playerData.readPlayerData(serverPlayerEntity);
         playerConsumer.accept(serverPlayerEntity);
-        playerData.func_237335_a_(serverPlayerEntity);
-    }
-
-    public static PlayerData getPlayerData(ServerWorld world) {
-        try {
-            Field field = ObfuscationReflectionHelper.findField(MinecraftServer.class, "field_240766_e_");
-            return (PlayerData) field.get(world.getServer());
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        playerData.writePlayerData(serverPlayerEntity);
     }
 
 }
