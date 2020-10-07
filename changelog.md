@@ -1,1 +1,1 @@
-- Ported to 1.14.4
+- Fixed model not applied to offline player
