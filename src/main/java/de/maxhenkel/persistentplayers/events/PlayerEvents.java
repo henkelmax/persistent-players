@@ -82,8 +82,8 @@ public class PlayerEvents {
 
         ServerWorld world = (ServerWorld) persistentPlayer.world;
         updateOfflinePlayer(world, persistentPlayer.getPlayerUUID().get(), serverPlayerEntity -> {
-            Main.LOGGER.info("Updating offline player location {} x:{} y: {} z: {}", persistentPlayer.getPlayerName(), persistentPlayer.getPosX(), persistentPlayer.getPosY(), persistentPlayer.getPosZ());
-            serverPlayerEntity.setPositionAndRotation(persistentPlayer.getPosX(), persistentPlayer.getPosY(), persistentPlayer.getPosZ(), persistentPlayer.rotationYaw, persistentPlayer.rotationPitch);
+            Main.LOGGER.info("Updating offline player location {} x:{} y: {} z: {}", persistentPlayer.getPlayerName(), persistentPlayer.posX, persistentPlayer.posY, persistentPlayer.posZ);
+            serverPlayerEntity.setPositionAndRotation(persistentPlayer.posX, persistentPlayer.posY, persistentPlayer.posZ, persistentPlayer.rotationYaw, persistentPlayer.rotationPitch);
             serverPlayerEntity.setWorld(world);
             if (additionalUpdateConsumer != null) {
                 additionalUpdateConsumer.accept(serverPlayerEntity);

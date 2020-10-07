@@ -41,7 +41,7 @@ public class Main {
 
         ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, ServerConfig.SERVER_SPEC);
 
-        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> FMLJavaModLoadingContext.get().getModEventBus().addListener(Main.this::clientSetup));
+        DistExecutor.runWhenOn(Dist.CLIENT, () -> () -> FMLJavaModLoadingContext.get().getModEventBus().addListener(Main.this::clientSetup));
     }
 
     @SubscribeEvent
@@ -53,7 +53,7 @@ public class Main {
     @OnlyIn(Dist.CLIENT)
     @SubscribeEvent
     public void clientSetup(FMLClientSetupEvent event) {
-        RenderingRegistry.registerEntityRenderingHandler(PLAYER_ENTITY_TYPE, PlayerRenderer::new);
+        RenderingRegistry.registerEntityRenderingHandler(PersistentPlayerEntity.class, PlayerRenderer::new);
     }
 
     @SubscribeEvent

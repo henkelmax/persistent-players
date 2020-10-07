@@ -20,6 +20,7 @@ import net.minecraft.network.datasync.DataParameter;
 import net.minecraft.network.datasync.DataSerializers;
 import net.minecraft.network.datasync.EntityDataManager;
 import net.minecraft.util.DamageSource;
+import net.minecraft.util.Direction;
 import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.world.World;
@@ -56,7 +57,7 @@ public class PersistentPlayerEntity extends MobEntity {
         for (EquipmentSlotType equipmentSlot : EquipmentSlotType.values()) {
             persistentPlayer.setItemStackToSlot(equipmentSlot, player.getItemStackFromSlot(equipmentSlot).copy());
         }
-        persistentPlayer.setPosition(player.getPosX(), player.getPosY(), player.getPosZ());
+        persistentPlayer.setPosition(player.posX, player.posY, player.posZ);
         persistentPlayer.rotationYaw = player.rotationYaw;
         persistentPlayer.prevRotationYaw = player.prevRotationYaw;
         persistentPlayer.rotationPitch = player.rotationPitch;
@@ -65,7 +66,7 @@ public class PersistentPlayerEntity extends MobEntity {
         persistentPlayer.prevRotationYawHead = player.prevRotationYawHead;
         persistentPlayer.setHealth(player.getHealth());
         persistentPlayer.setAir(player.getAir());
-        persistentPlayer.setFireTimer(player.getFireTimer());
+        persistentPlayer.setFire(player.func_223314_ad());
         player.getActivePotionEffects().forEach(persistentPlayer::addPotionEffect);
         persistentPlayer.setInvulnerable(player.isCreative());
         return persistentPlayer;
@@ -74,15 +75,20 @@ public class PersistentPlayerEntity extends MobEntity {
     public void toPlayer(ServerPlayerEntity player) {
         player.setHealth(getHealth());
         player.setAir(getAir());
-        player.setFireTimer(getFireTimer());
+        player.setFire(func_223314_ad());
         getActivePotionEffects().forEach(player::addPotionEffect);
-        player.teleport((ServerWorld) world, getPosX(), getPosY(), getPosZ(), rotationYaw, rotationPitch);
+        player.teleport((ServerWorld) world, posX, posY, posZ, rotationYaw, rotationPitch);
         player.rotationYaw = rotationYaw;
         player.prevRotationYaw = prevRotationYaw;
         player.rotationPitch = rotationPitch;
         player.prevRotationPitch = prevRotationPitch;
         player.rotationYawHead = rotationYawHead;
         player.prevRotationYawHead = prevRotationYawHead;
+    }
+
+    @Override
+    public Direction getBedDirection() {
+        return Direction.NORTH;
     }
 
     @Override

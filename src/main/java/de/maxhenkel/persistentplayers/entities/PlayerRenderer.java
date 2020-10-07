@@ -2,10 +2,9 @@ package de.maxhenkel.persistentplayers.entities;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.minecraft.MinecraftProfileTexture;
-import com.mojang.blaze3d.matrix.MatrixStack;
+import com.mojang.blaze3d.platform.GlStateManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.network.play.NetworkPlayerInfo;
-import net.minecraft.client.renderer.IRenderTypeBuffer;
 import net.minecraft.client.renderer.entity.EntityRendererManager;
 import net.minecraft.client.renderer.entity.LivingRenderer;
 import net.minecraft.client.renderer.entity.layers.BipedArmorLayer;
@@ -39,9 +38,9 @@ public class PlayerRenderer extends LivingRenderer<PersistentPlayerEntity, Playe
     }
 
     @Override
-    protected void preRenderCallback(PersistentPlayerEntity entitylivingbaseIn, MatrixStack matrixStackIn, float partialTickTime) {
+    protected void preRenderCallback(PersistentPlayerEntity entitylivingbaseIn, float partialTickTime) {
         float scale = 0.9375F;
-        matrixStackIn.scale(scale, scale, scale);
+        GlStateManager.scalef(scale, scale, scale);
     }
 
     @Override
@@ -50,18 +49,16 @@ public class PlayerRenderer extends LivingRenderer<PersistentPlayerEntity, Playe
     }
 
     @Override
-    public void render(PersistentPlayerEntity entity, float entityYaw, float partialTicks, MatrixStack matrixStack, IRenderTypeBuffer buffer, int packedLightIn) {
-        matrixStack.push();
-
+    public void doRender(PersistentPlayerEntity entity, double x, double y, double z, float entityYaw, float partialTicks) {
+        GlStateManager.pushMatrix();
         if (isSlim(entity.getPlayerUUID().orElse(new UUID(0L, 0L)))) {
             entityModel = playerModelSmallArms;
         } else {
             entityModel = playerModel;
         }
         setModelVisibilities(entity);
-        super.render(entity, entityYaw, partialTicks, matrixStack, buffer, packedLightIn);
-
-        matrixStack.pop();
+        super.doRender(entity, x, y, z, entityYaw, partialTicks);
+        GlStateManager.popMatrix();
     }
 
     public static ResourceLocation getSkin(GameProfile gameProfile) {
