@@ -1,16 +1,17 @@
 package de.maxhenkel.persistentplayers.events;
 
 import com.mojang.authlib.GameProfile;
-import de.maxhenkel.persistentplayers.Main;
-import de.maxhenkel.persistentplayers.ServerConfig;
+import de.maxhenkel.persistentplayers.Config;
+import de.maxhenkel.persistentplayers.Log;
 import de.maxhenkel.persistentplayers.entities.PersistentPlayerEntity;
-import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.management.PlayerInteractionManager;
-import net.minecraft.world.server.ServerWorld;
+import net.minecraft.world.WorldServer;
+import net.minecraft.world.storage.ISaveHandler;
 import net.minecraft.world.storage.SaveHandler;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.eventhandler.EventPriority;
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.gameevent.PlayerEvent;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -20,96 +21,97 @@ public class PlayerEvents {
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public void playerFromFile(PlayerEvent.PlayerLoggedInEvent event) {
-        if (!(event.getPlayer() instanceof ServerPlayerEntity)) {
+        if (!(event.player instanceof EntityPlayerMP)) {
             return;
         }
-        ServerPlayerEntity player = (ServerPlayerEntity) event.getPlayer();
-        if (player.getServerWorld().getServer().isSinglePlayer()) {
+        EntityPlayerMP player = (EntityPlayerMP) event.player;
+        if (player.getServerWorld().getMinecraftServer().isSinglePlayer()) {
             return;
         }
 
         boolean foundPlayer = false;
-        for (ServerWorld world : player.getServerWorld().getServer().getWorlds()) {
+        for (WorldServer world : player.getServerWorld().getMinecraftServer().worlds) {
             Optional<PersistentPlayerEntity> persistentPlayer = findPersistentPlayer(world, player.getUniqueID());
 
             if (persistentPlayer.isPresent()) {
                 PersistentPlayerEntity p = persistentPlayer.get();
                 p.toPlayer(player);
-                p.remove();
+                p.setDead();
                 foundPlayer = true;
                 break;
             }
         }
         if (!foundPlayer) {
-            Main.LOGGER.error("Failed to find persisted player. Defaulting to vanilla spawning.");
+            Log.e("Failed to find persisted player. Defaulting to vanilla spawning.");
         }
 
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public void playerLogOut(PlayerEvent.PlayerLoggedOutEvent event) {
-        if (!(event.getPlayer() instanceof ServerPlayerEntity)) {
+        if (!(event.player instanceof EntityPlayerMP)) {
             return;
         }
-        ServerPlayerEntity player = (ServerPlayerEntity) event.getPlayer();
+        EntityPlayerMP player = (EntityPlayerMP) event.player;
         if (!shouldPersist(player)) {
             return;
         }
-        player.stopRiding();
-        player.world.addEntity(PersistentPlayerEntity.fromPlayer(player));
+        player.dismountRidingEntity();
+        player.world.spawnEntity(PersistentPlayerEntity.fromPlayer(player));
     }
 
-    public boolean shouldPersist(ServerPlayerEntity player) {
-        if (player.getServerWorld().getServer().isSinglePlayer()) {
+    public boolean shouldPersist(EntityPlayerMP player) {
+        if (player.getServerWorld().getMinecraftServer().isSinglePlayer()) {
             return false;
         }
         if (player.isSpectator()) {
             return false;
         }
-        if (player.isCreative() && !ServerConfig.SERVER.persistCreativePlayers.get()) {
+        if (player.isCreative() && !Config.persistCreativePlayers) {
             return false;
         }
         return true;
     }
 
-    public void updatePersistentPlayerLocation(PersistentPlayerEntity persistentPlayer, Consumer<ServerPlayerEntity> additionalUpdateConsumer) {
-        if (!(persistentPlayer.world instanceof ServerWorld)) {
+    public void updatePersistentPlayerLocation(PersistentPlayerEntity persistentPlayer, Consumer<EntityPlayerMP> additionalUpdateConsumer) {
+        if (!(persistentPlayer.world instanceof WorldServer)) {
             return;
         }
         if (!persistentPlayer.getPlayerUUID().isPresent()) {
             return;
         }
 
-        ServerWorld world = (ServerWorld) persistentPlayer.world;
+        WorldServer world = (WorldServer) persistentPlayer.world;
         updateOfflinePlayer(world, persistentPlayer.getPlayerUUID().get(), serverPlayerEntity -> {
-            Main.LOGGER.info("Updating offline player location {} x:{} y: {} z: {}", persistentPlayer.getPlayerName(), persistentPlayer.posX, persistentPlayer.posY, persistentPlayer.posZ);
+            Log.i("Updating offline player location " + persistentPlayer.getPlayerName() + " x: " + persistentPlayer.posX + " y: " + persistentPlayer.posY + " z: " + persistentPlayer.posZ);
             serverPlayerEntity.setPositionAndRotation(persistentPlayer.posX, persistentPlayer.posY, persistentPlayer.posZ, persistentPlayer.rotationYaw, persistentPlayer.rotationPitch);
-            serverPlayerEntity.setWorld(world);
+            serverPlayerEntity.dimension = world.provider.getDimension();
             if (additionalUpdateConsumer != null) {
                 additionalUpdateConsumer.accept(serverPlayerEntity);
             }
         });
     }
 
-    public Optional<PersistentPlayerEntity> findPersistentPlayer(ServerWorld world, UUID playerUUID) {
-        return world.getEntities()
-                .filter(PersistentPlayerEntity.class::isInstance)
-                .map(PersistentPlayerEntity.class::cast)
-                .filter(p -> p.getPlayerUUID().isPresent())
-                .filter(p -> p.getPlayerUUID().get().equals(playerUUID))
-                .findAny();
+    public Optional<PersistentPlayerEntity> findPersistentPlayer(WorldServer world, UUID playerUUID) {
+        return world.getEntities(PersistentPlayerEntity.class, p -> p.getPlayerUUID().isPresent() && p.getPlayerUUID().get().equals(playerUUID)).stream().findAny();
     }
 
-    public static void updateOfflinePlayer(ServerWorld world, UUID playerUUID, Consumer<ServerPlayerEntity> playerConsumer) {
-        if (world.getServer().isSinglePlayer()) {
+    public static void updateOfflinePlayer(WorldServer world, UUID playerUUID, Consumer<EntityPlayerMP> playerConsumer) {
+        if (world.getMinecraftServer().isSinglePlayer()) {
             return;
         }
 
-        SaveHandler playerData = world.getSaveHandler();
-        ServerPlayerEntity serverPlayerEntity = new ServerPlayerEntity(world.getServer(), world, new GameProfile(playerUUID, ""), new PlayerInteractionManager(world));
-        playerData.readPlayerData(serverPlayerEntity);
-        playerConsumer.accept(serverPlayerEntity);
-        playerData.writePlayerData(serverPlayerEntity);
+        ISaveHandler playerData = world.getSaveHandler();
+        EntityPlayerMP serverPlayerEntity = new EntityPlayerMP(world.getMinecraftServer(), world, new GameProfile(playerUUID, ""), new PlayerInteractionManager(world));
+
+        if (playerData instanceof SaveHandler) {
+            SaveHandler saveHandler = (SaveHandler) playerData;
+            saveHandler.readPlayerData(serverPlayerEntity);
+            playerConsumer.accept(serverPlayerEntity);
+            saveHandler.writePlayerData(serverPlayerEntity);
+        } else {
+            Log.e("Failed to write player data (Wrong SaveHandler)");
+        }
     }
 
 }

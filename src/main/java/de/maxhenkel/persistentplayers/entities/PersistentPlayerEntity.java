@@ -1,60 +1,61 @@
 package de.maxhenkel.persistentplayers.entities;
 
+import com.google.common.base.Optional;
 import com.mojang.authlib.GameProfile;
-import de.maxhenkel.persistentplayers.Main;
-import de.maxhenkel.persistentplayers.ServerConfig;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.MobEntity;
-import net.minecraft.entity.Pose;
+import de.maxhenkel.persistentplayers.Config;
+import de.maxhenkel.persistentplayers.proxy.CommonProxy;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.SharedMonsterAttributes;
-import net.minecraft.entity.ai.goal.LookAtGoal;
-import net.minecraft.entity.ai.goal.LookRandomlyGoal;
-import net.minecraft.entity.ai.goal.SwimGoal;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.PlayerModelPart;
-import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.inventory.EquipmentSlotType;
+import net.minecraft.entity.ai.EntityAILookIdle;
+import net.minecraft.entity.ai.EntityAISwimming;
+import net.minecraft.entity.monster.EntityMob;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.entity.player.EnumPlayerModelParts;
+import net.minecraft.inventory.EntityEquipmentSlot;
 import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.datasync.DataParameter;
 import net.minecraft.network.datasync.DataSerializers;
 import net.minecraft.network.datasync.EntityDataManager;
 import net.minecraft.util.DamageSource;
-import net.minecraft.util.Direction;
 import net.minecraft.util.text.ITextComponent;
-import net.minecraft.util.text.StringTextComponent;
+import net.minecraft.util.text.TextComponentString;
 import net.minecraft.world.World;
-import net.minecraft.world.server.ServerWorld;
+import net.minecraftforge.common.util.ITeleporter;
+import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
 
+import java.lang.reflect.Field;
 import java.util.Arrays;
-import java.util.Optional;
 import java.util.UUID;
 
-public class PersistentPlayerEntity extends MobEntity {
+public class PersistentPlayerEntity extends EntityMob {
 
     private static final DataParameter<Optional<UUID>> ID = EntityDataManager.createKey(PersistentPlayerEntity.class, DataSerializers.OPTIONAL_UNIQUE_ID);
     private static final DataParameter<String> NAME = EntityDataManager.createKey(PersistentPlayerEntity.class, DataSerializers.STRING);
     private static final DataParameter<Byte> PLAYER_MODEL = EntityDataManager.createKey(PersistentPlayerEntity.class, DataSerializers.BYTE);
 
-    public PersistentPlayerEntity(EntityType type, World world) {
-        super(type, world);
+    public PersistentPlayerEntity(World world) {
+        super(world);
         Arrays.fill(inventoryArmorDropChances, 0F);
         Arrays.fill(inventoryHandsDropChances, 0F);
 
-        if (ServerConfig.SERVER.offlinePlayersSleep.get()) {
-            setPose(Pose.SLEEPING);
+        if (Config.offlinePlayersSleep) {
+            width = 0.25F;
+            height = 0.25F;
         }
     }
 
-    public PersistentPlayerEntity(World world) {
-        this(Main.PLAYER_ENTITY_TYPE, world);
+    @Override
+    public boolean isPlayerSleeping() {
+        return Config.offlinePlayersSleep;
     }
 
-    public static PersistentPlayerEntity fromPlayer(PlayerEntity player) {
-        PersistentPlayerEntity persistentPlayer = Main.PLAYER_ENTITY_TYPE.create(player.world);
-        persistentPlayer.setPlayerName(player.getName().getString());
+    public static PersistentPlayerEntity fromPlayer(EntityPlayer player) {
+        PersistentPlayerEntity persistentPlayer = new PersistentPlayerEntity(player.world);
+        persistentPlayer.setPlayerName(player.getName());
         persistentPlayer.setPlayerUUID(player.getUniqueID());
-        for (EquipmentSlotType equipmentSlot : EquipmentSlotType.values()) {
+        for (EntityEquipmentSlot equipmentSlot : EntityEquipmentSlot.values()) {
             persistentPlayer.setItemStackToSlot(equipmentSlot, player.getItemStackFromSlot(equipmentSlot).copy());
         }
         persistentPlayer.setPosition(player.posX, player.posY, player.posZ);
@@ -66,18 +67,28 @@ public class PersistentPlayerEntity extends MobEntity {
         persistentPlayer.prevRotationYawHead = player.prevRotationYawHead;
         persistentPlayer.setHealth(player.getHealth());
         persistentPlayer.setAir(player.getAir());
-        persistentPlayer.setFire(player.func_223314_ad());
+        try {
+            Field fire = ObfuscationReflectionHelper.findField(Entity.class, "fire");
+            persistentPlayer.setFire((Integer) fire.get(player));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         player.getActivePotionEffects().forEach(persistentPlayer::addPotionEffect);
-        persistentPlayer.setInvulnerable(player.isCreative());
+        persistentPlayer.setEntityInvulnerable(player.isCreative());
         return persistentPlayer;
     }
 
-    public void toPlayer(ServerPlayerEntity player) {
+    public void toPlayer(EntityPlayerMP player) {
         player.setHealth(getHealth());
         player.setAir(getAir());
-        player.setFire(func_223314_ad());
+        try {
+            Field fire = ObfuscationReflectionHelper.findField(Entity.class, "fire");
+            setFire((Integer) fire.get(this));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         getActivePotionEffects().forEach(player::addPotionEffect);
-        player.teleport((ServerWorld) world, posX, posY, posZ, rotationYaw, rotationPitch);
+        player.setPositionAndRotation(posX, posY, posZ, rotationYaw, rotationPitch);
         player.rotationYaw = rotationYaw;
         player.prevRotationYaw = prevRotationYaw;
         player.rotationPitch = rotationPitch;
@@ -86,57 +97,59 @@ public class PersistentPlayerEntity extends MobEntity {
         player.prevRotationYawHead = prevRotationYawHead;
     }
 
-    @Override
-    public Direction getBedDirection() {
-        return Direction.NORTH;
-    }
 
     @Override
     public void onDeath(DamageSource cause) {
         super.onDeath(cause);
 
-        Main.LOGIN_EVENTS.updatePersistentPlayerLocation(this, p -> {
+        CommonProxy.PLAYER_EVENTS.updatePersistentPlayerLocation(this, p -> {
             p.setHealth(0F);
             for (int i = 0; i < p.inventory.getSizeInventory(); i++) {
                 ItemStack stackInSlot = p.inventory.getStackInSlot(i);
                 p.inventory.removeStackFromSlot(i);
-                entityDropItem(stackInSlot);
+                entityDropItem(stackInSlot, 0F);
             }
         });
     }
 
     @Override
-    public boolean isInvulnerableTo(DamageSource source) {
-        if (!isInvulnerable()) {
-            return super.isInvulnerableTo(source);
+    public Entity changeDimension(int dimensionIn, ITeleporter teleporter) {
+        Entity entity = super.changeDimension(dimensionIn, teleporter);
+        if (entity instanceof PersistentPlayerEntity) {
+            CommonProxy.PLAYER_EVENTS.updatePersistentPlayerLocation((PersistentPlayerEntity) entity, null);
+        }
+        return entity;
+    }
+
+    @Override
+    public boolean isEntityInvulnerable(DamageSource source) {
+        if (!getIsInvulnerable()) {
+            return super.isEntityInvulnerable(source);
         }
         return source != DamageSource.OUT_OF_WORLD;
     }
 
     @Override
-    protected void registerGoals() {
-        super.registerGoals();
-        goalSelector.addGoal(0, new SwimGoal(this));
-        if (!ServerConfig.SERVER.offlinePlayersSleep.get()) {
-            goalSelector.addGoal(1, new LookAtGoal(this, MobEntity.class, 8F));
-            goalSelector.addGoal(2, new LookRandomlyGoal(this));
+    protected void initEntityAI() {
+        tasks.addTask(0, new EntityAISwimming(this));
+        if (!Config.offlinePlayersSleep) {
+            tasks.addTask(1, new EntityAILookIdle(this));
         }
-
     }
 
     @Override
-    protected void registerAttributes() {
-        super.registerAttributes();
-        getAttribute(SharedMonsterAttributes.MAX_HEALTH).setBaseValue(20D);
+    protected void applyEntityAttributes() {
+        super.applyEntityAttributes();
+        getEntityAttribute(SharedMonsterAttributes.MAX_HEALTH).setBaseValue(20D);
     }
 
     @Override
     public ITextComponent getDisplayName() {
         String name = getPlayerName();
         if (name == null || name.trim().isEmpty()) {
-            return super.getDisplayName();
+            return new TextComponentString("Player");
         } else {
-            return new StringTextComponent(getPlayerName());
+            return new TextComponentString(getPlayerName());
         }
     }
 
@@ -146,7 +159,7 @@ public class PersistentPlayerEntity extends MobEntity {
 
     public void setPlayerUUID(UUID uuid) {
         if (uuid == null) {
-            dataManager.set(ID, Optional.empty());
+            dataManager.set(ID, Optional.absent());
         } else {
             dataManager.set(ID, Optional.of(uuid));
         }
@@ -161,18 +174,18 @@ public class PersistentPlayerEntity extends MobEntity {
     }
 
     public GameProfile getGameProfile() {
-        return new GameProfile(getPlayerUUID().orElse(new UUID(0L, 0L)), getPlayerName());
+        return new GameProfile(getPlayerUUID().or(new UUID(0L, 0L)), getPlayerName());
     }
 
     @Override
-    protected void registerData() {
-        super.registerData();
-        dataManager.register(ID, Optional.empty());
+    protected void entityInit() {
+        super.entityInit();
+        dataManager.register(ID, Optional.absent());
         dataManager.register(NAME, "");
         dataManager.register(PLAYER_MODEL, (byte) 0);
     }
 
-    public boolean isWearing(PlayerModelPart part) {
+    public boolean isWearing(EnumPlayerModelParts part) {
         return (getPlayerModel() & part.getPartMask()) == part.getPartMask();
     }
 
@@ -184,24 +197,25 @@ public class PersistentPlayerEntity extends MobEntity {
         dataManager.set(PLAYER_MODEL, b);
     }
 
-    public void writeAdditional(CompoundNBT compound) {
-        super.writeAdditional(compound);
+    @Override
+    public void writeEntityToNBT(NBTTagCompound compound) {
+        super.writeEntityToNBT(compound);
+        if (getPlayerUUID().isPresent()) {
+            compound.setUniqueId("playerUUID", getPlayerUUID().get());
+        }
 
-        getPlayerUUID().ifPresent(uuid -> {
-            compound.putUniqueId("playerUUID", uuid);
-        });
+        compound.setString("playerName", getPlayerName());
 
-        compound.putString("playerName", getPlayerName());
+        compound.setByte("model", getPlayerModel());
 
-        compound.putByte("model", getPlayerModel());
-
-        Main.LOGIN_EVENTS.updatePersistentPlayerLocation(this, null);
+        CommonProxy.PLAYER_EVENTS.updatePersistentPlayerLocation(this, null);
     }
 
-    public void readAdditional(CompoundNBT compound) {
-        super.readAdditional(compound);
+    @Override
+    public void readEntityFromNBT(NBTTagCompound compound) {
+        super.readEntityFromNBT(compound);
 
-        if (compound.contains("playerUUIDMost")) {
+        if (compound.hasKey("playerUUIDMost")) {
             setPlayerUUID(compound.getUniqueId("playerUUID"));
         }
 

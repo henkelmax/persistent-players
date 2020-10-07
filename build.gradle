@@ -74,11 +74,6 @@ minecraft {
 
 dependencies {
     minecraft "net.minecraftforge:forge:${mod_minecraft_version}-${forge_version}"
-
-    compileOnly fg.deobf("mezz.jei:jei-${mod_minecraft_version}:${jei_version}:api")
-    runtimeOnly fg.deobf("mezz.jei:jei-${mod_minecraft_version}:${jei_version}")
-
-    compile fg.deobf("mcp.mobius.waila:Hwyla:${hwyla_version}")
 }
 
 jar {
@@ -97,13 +92,13 @@ processResources {
     inputs.property "version", project.version
 
     from(sourceSets.main.resources.srcDirs) {
-        include '**/*.toml'
+        include '**/*.info'
 
         expand 'mod_id': mod_id, 'mod_version': mod_version, 'mod_vendor': mod_vendor, 'mod_name': mod_name,
                 'mod_forge_version': mod_forge_version, 'mod_minecraft_version': mod_minecraft_version
     }
     from(sourceSets.main.resources.srcDirs) {
-        exclude '**/*.toml'
+        exclude '**/*.info'
     }
 }
 
@@ -150,24 +145,6 @@ forgeUpdate {
     updateMessages = messages
     releaseType = curse_release_type
     tags = recommended == 'true' ? ['recommended'] : []
-}
-
-repositories {
-    maven {
-        // location of the maven that hosts JEI files
-        name = "Progwml6 maven"
-        url = "https://dvs1.progwml6.com/files/maven/"
-    }
-    maven {
-        // location of a maven mirror for JEI files, as a fallback
-        name = "ModMaven"
-        url = "https://modmaven.k-4u.nl"
-    }
-    maven {
-        name = "Hwyla"
-        url = "https://maven.tehnut.info"
-    }
-    mavenLocal()
 }
 
 javadoc {

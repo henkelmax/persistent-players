@@ -1,71 +1,47 @@
 package de.maxhenkel.persistentplayers;
 
-import de.maxhenkel.persistentplayers.entities.PersistentPlayerEntity;
-import de.maxhenkel.persistentplayers.entities.PlayerRenderer;
-import de.maxhenkel.persistentplayers.events.PlayerEvents;
-import net.minecraft.entity.EntityClassification;
-import net.minecraft.entity.EntityType;
-import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.RegistryEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.fml.ModLoadingContext;
-import net.minecraftforge.fml.client.registry.RenderingRegistry;
+import de.maxhenkel.persistentplayers.proxy.CommonProxy;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.config.ModConfig;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import net.minecraftforge.fml.common.SidedProxy;
+import net.minecraftforge.fml.common.event.FMLInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 
-@Mod(Main.MODID)
-@Mod.EventBusSubscriber
+@Mod(modid = Main.MODID, version = Main.VERSION, acceptedMinecraftVersions = Main.MC_VERSION, updateJSON = Main.UPDATE_JSON)
 public class Main {
 
     public static final String MODID = "persistent_players";
+    public static final String VERSION = "1.12.2-1.0.0";
+    public static final String MC_VERSION = "[1.12.2]";
+    public static final String UPDATE_JSON = "https://maxhenkel.de/update/persistent_players.json";
 
-    public static final Logger LOGGER = LogManager.getLogger(Main.MODID);
+    @Mod.Instance
+    private static Main instance;
 
-    public static EntityType<PersistentPlayerEntity> PLAYER_ENTITY_TYPE;
-
-    public static PlayerEvents LOGIN_EVENTS = new PlayerEvents();
+    @SidedProxy(clientSide = "de.maxhenkel.persistentplayers.proxy.ClientProxy", serverSide = "de.maxhenkel.persistentplayers.proxy.CommonProxy")
+    public static CommonProxy proxy;
 
     public Main() {
-        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::commonSetup);
-        FMLJavaModLoadingContext.get().getModEventBus().addGenericListener(EntityType.class, this::registerEntities);
-
-
-        ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, ServerConfig.SERVER_SPEC);
-
-        DistExecutor.runWhenOn(Dist.CLIENT, () -> () -> FMLJavaModLoadingContext.get().getModEventBus().addListener(Main.this::clientSetup));
+        instance = this;
     }
 
-    @SubscribeEvent
-    public void commonSetup(FMLCommonSetupEvent event) {
-        MinecraftForge.EVENT_BUS.register(this);
-        MinecraftForge.EVENT_BUS.register(LOGIN_EVENTS);
+    @Mod.EventHandler
+    public void preinit(FMLPreInitializationEvent event) {
+        proxy.preinit(event);
     }
 
-    @OnlyIn(Dist.CLIENT)
-    @SubscribeEvent
-    public void clientSetup(FMLClientSetupEvent event) {
-        RenderingRegistry.registerEntityRenderingHandler(PersistentPlayerEntity.class, PlayerRenderer::new);
+    @Mod.EventHandler
+    public void init(FMLInitializationEvent event) {
+        proxy.init(event);
     }
 
-    @SubscribeEvent
-    public void registerEntities(RegistryEvent.Register<EntityType<?>> event) {
-        PLAYER_ENTITY_TYPE = EntityType.Builder.<PersistentPlayerEntity>create(PersistentPlayerEntity::new, EntityClassification.MISC)
-                .setTrackingRange(128)
-                .setUpdateInterval(1)
-                .setShouldReceiveVelocityUpdates(true)
-                .setCustomClientFactory((spawnEntity, world) -> new PersistentPlayerEntity(world))
-                .build(Main.MODID + ":player");
-        PLAYER_ENTITY_TYPE.setRegistryName(new ResourceLocation(Main.MODID, "player"));
-        event.getRegistry().register(PLAYER_ENTITY_TYPE);
+    @Mod.EventHandler
+    public void postinit(FMLPostInitializationEvent event) {
+        proxy.postinit(event);
+    }
+
+    public static Main instance() {
+        return instance;
     }
 
 }
