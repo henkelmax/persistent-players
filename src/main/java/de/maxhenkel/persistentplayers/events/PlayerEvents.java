@@ -109,9 +109,9 @@ public class PlayerEvents {
 
         PlayerData playerData = getPlayerData(world);
         ServerPlayerEntity serverPlayerEntity = new ServerPlayerEntity(world.getServer(), world, new GameProfile(playerUUID, ""), new PlayerInteractionManager(world));
-        playerData.func_237336_b_(serverPlayerEntity);
+        playerData.loadPlayerData(serverPlayerEntity);
         playerConsumer.accept(serverPlayerEntity);
-        playerData.func_237335_a_(serverPlayerEntity);
+        playerData.savePlayerData(serverPlayerEntity);
     }
 
     public static PlayerData getPlayerData(ServerWorld world) {

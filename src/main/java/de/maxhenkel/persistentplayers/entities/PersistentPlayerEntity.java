@@ -67,7 +67,7 @@ public class PersistentPlayerEntity extends MobEntity {
         persistentPlayer.prevRotationYawHead = player.prevRotationYawHead;
         persistentPlayer.setHealth(player.getHealth());
         persistentPlayer.setAir(player.getAir());
-        persistentPlayer.func_241209_g_(player.getFireTimer());
+        persistentPlayer.setFire(player.getFireTimer());
         player.getActivePotionEffects().forEach(persistentPlayer::addPotionEffect);
         persistentPlayer.setInvulnerable(player.isCreative());
         persistentPlayer.setPlayerModel(PlayerUtils.getModel(player));
@@ -77,7 +77,7 @@ public class PersistentPlayerEntity extends MobEntity {
     public void toPlayer(ServerPlayerEntity player) {
         player.setHealth(getHealth());
         player.setAir(getAir());
-        player.func_241209_g_(getFireTimer());
+        player.setFire(getFireTimer());
         getActivePotionEffects().forEach(player::addPotionEffect);
         player.teleport((ServerWorld) world, getPosX(), getPosY(), getPosZ(), rotationYaw, rotationPitch);
         player.rotationYaw = rotationYaw;
@@ -123,7 +123,7 @@ public class PersistentPlayerEntity extends MobEntity {
 
     public static AttributeModifierMap.MutableAttribute getAttributes() {
         return MonsterEntity.func_234295_eP_()
-                .func_233815_a_(Attributes.field_233818_a_, 20D);
+                .createMutableAttribute(Attributes.MAX_HEALTH, 20D);
     }
 
     @Override
