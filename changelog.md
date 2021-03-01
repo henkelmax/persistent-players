@@ -1,1 +1,1 @@
-- Fixed model not applied to offline player
+- Fixed exception when logging out

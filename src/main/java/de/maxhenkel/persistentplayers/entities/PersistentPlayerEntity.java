@@ -68,7 +68,7 @@ public class PersistentPlayerEntity extends EntityMob {
         persistentPlayer.setHealth(player.getHealth());
         persistentPlayer.setAir(player.getAir());
         try {
-            Field fire = ObfuscationReflectionHelper.findField(Entity.class, "fire");
+            Field fire = ObfuscationReflectionHelper.findField(Entity.class, "field_190534_ay");
             persistentPlayer.setFire((Integer) fire.get(player));
         } catch (Exception e) {
             e.printStackTrace();
@@ -83,7 +83,7 @@ public class PersistentPlayerEntity extends EntityMob {
         player.setHealth(getHealth());
         player.setAir(getAir());
         try {
-            Field fire = ObfuscationReflectionHelper.findField(Entity.class, "fire");
+            Field fire = ObfuscationReflectionHelper.findField(Entity.class, "field_190534_ay");
             setFire((Integer) fire.get(this));
         } catch (Exception e) {
             e.printStackTrace();
