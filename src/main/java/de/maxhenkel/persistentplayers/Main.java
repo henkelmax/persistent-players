@@ -66,7 +66,7 @@ public class Main {
                     .setCustomClientFactory((spawnEntity, world) -> new PersistentPlayerEntity(world));
         });
         event.getRegistry().register(PLAYER_ENTITY_TYPE);
-        GlobalEntityTypeAttributes.put(PLAYER_ENTITY_TYPE, PersistentPlayerEntity.getAttributes().create());
+        GlobalEntityTypeAttributes.put(PLAYER_ENTITY_TYPE, PersistentPlayerEntity.getPlayerAttributes().build());
     }
 
 }

@@ -26,13 +26,13 @@ public class PlayerEvents {
             return;
         }
         ServerPlayerEntity player = (ServerPlayerEntity) event.getPlayer();
-        if (player.getServerWorld().getServer().isSinglePlayer()) {
+        if (player.getLevel().getServer().isSingleplayer()) {
             return;
         }
 
         boolean foundPlayer = false;
-        for (ServerWorld world : player.getServerWorld().getServer().getWorlds()) {
-            Optional<PersistentPlayerEntity> persistentPlayer = findPersistentPlayer(world, player.getUniqueID());
+        for (ServerWorld world : player.getLevel().getServer().getAllLevels()) {
+            Optional<PersistentPlayerEntity> persistentPlayer = findPersistentPlayer(world, player.getUUID());
 
             if (persistentPlayer.isPresent()) {
                 PersistentPlayerEntity p = persistentPlayer.get();
@@ -58,11 +58,11 @@ public class PlayerEvents {
             return;
         }
         player.stopRiding();
-        player.world.addEntity(PersistentPlayerEntity.fromPlayer(player));
+        player.level.addFreshEntity(PersistentPlayerEntity.fromPlayer(player));
     }
 
     public boolean shouldPersist(ServerPlayerEntity player) {
-        if (player.getServerWorld().getServer().isSinglePlayer()) {
+        if (player.getLevel().getServer().isSingleplayer()) {
             return false;
         }
         if (player.isSpectator()) {
@@ -75,18 +75,18 @@ public class PlayerEvents {
     }
 
     public void updatePersistentPlayerLocation(PersistentPlayerEntity persistentPlayer, Consumer<ServerPlayerEntity> additionalUpdateConsumer) {
-        if (!(persistentPlayer.world instanceof ServerWorld)) {
+        if (!(persistentPlayer.level instanceof ServerWorld)) {
             return;
         }
         if (!persistentPlayer.getPlayerUUID().isPresent()) {
             return;
         }
 
-        ServerWorld world = (ServerWorld) persistentPlayer.world;
+        ServerWorld world = (ServerWorld) persistentPlayer.level;
         updateOfflinePlayer(world, persistentPlayer.getPlayerUUID().get(), serverPlayerEntity -> {
-            Main.LOGGER.info("Updating offline player location {} x:{} y: {} z: {}", persistentPlayer.getPlayerName(), persistentPlayer.getPosX(), persistentPlayer.getPosY(), persistentPlayer.getPosZ());
-            serverPlayerEntity.setPositionAndRotation(persistentPlayer.getPosX(), persistentPlayer.getPosY(), persistentPlayer.getPosZ(), persistentPlayer.rotationYaw, persistentPlayer.rotationPitch);
-            serverPlayerEntity.setWorld(world);
+            Main.LOGGER.info("Updating offline player location {} x:{} y: {} z: {}", persistentPlayer.getPlayerName(), persistentPlayer.getX(), persistentPlayer.getY(), persistentPlayer.getZ());
+            serverPlayerEntity.absMoveTo(persistentPlayer.getX(), persistentPlayer.getY(), persistentPlayer.getZ(), persistentPlayer.yRot, persistentPlayer.xRot);
+            serverPlayerEntity.setLevel(world);
             if (additionalUpdateConsumer != null) {
                 additionalUpdateConsumer.accept(serverPlayerEntity);
             }
@@ -103,15 +103,15 @@ public class PlayerEvents {
     }
 
     public static void updateOfflinePlayer(ServerWorld world, UUID playerUUID, Consumer<ServerPlayerEntity> playerConsumer) {
-        if (world.getServer().isSinglePlayer()) {
+        if (world.getServer().isSingleplayer()) {
             return;
         }
 
         PlayerData playerData = getPlayerData(world);
         ServerPlayerEntity serverPlayerEntity = new ServerPlayerEntity(world.getServer(), world, new GameProfile(playerUUID, ""), new PlayerInteractionManager(world));
-        playerData.loadPlayerData(serverPlayerEntity);
+        playerData.load(serverPlayerEntity);
         playerConsumer.accept(serverPlayerEntity);
-        playerData.savePlayerData(serverPlayerEntity);
+        playerData.save(serverPlayerEntity);
     }
 
     public static PlayerData getPlayerData(ServerWorld world) {
