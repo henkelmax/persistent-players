@@ -2,10 +2,6 @@
 
 ## Links
 - [CurseForge](https://www.curseforge.com/minecraft/mc-mods/persistent-players)
-- [ModRepo](https://modrepo.de/minecraft/persistent_players/overview)
-- [GitHub](https://github.com/henkelmax/persistent-players)
-- [FAQ](https://modrepo.de/minecraft/persistent_players/faq)
-- [Credits](https://modrepo.de/minecraft/persistent_players/credits)
 
 ---
 
